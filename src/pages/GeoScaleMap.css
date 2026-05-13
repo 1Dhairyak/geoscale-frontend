@@ -1,0 +1,6 @@
+.gs-tip { background: #1a1a2e; color: #fff; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; padding: 4px 10px; }
+.gs-tip::before { display: none; }
+.leaflet-container { background: #aad3df; }
+.gs-suggest:hover { background: rgba(255,255,255,0.07) !important; }
+#map-wrapper:fullscreen { width: 100vw !important; height: 100vh !important; }
+#map-wrapper:-webkit-full-screen { width: 100vw !important; height: 100vh !important; }

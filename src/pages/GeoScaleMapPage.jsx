@@ -1,6 +1,8 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+﻿import { useState, useEffect, useRef, useCallback } from "react";
 import L from "leaflet";
+
 import "leaflet/dist/leaflet.css";
+import "./GeoScaleMap.css";
 
 const COLORS = ["#ef4444","#22c55e","#3b82f6","#f59e0b","#8b5cf6","#f97316","#06b6d4","#ec4899"];
 
@@ -96,13 +98,13 @@ const ISO_MAP = {
   "Belarus":"112","Oman":"512","Czech Rep.":"203",
 };
 
-// ─── Mercator reprojection helpers ───────────────────────────────────────────
+// â”€â”€â”€ Mercator reprojection helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Given the original (centroid) latitude and the new (target) latitude,
 // reproject a single [lat, lng] coordinate so that the horizontal scale
 // matches the Mercator distortion at the target latitude.
 //
 // Mercator horizontal scale factor = 1 / cos(lat).
-// To move from origLat → newLat we multiply the lng offset from centroid
+// To move from origLat â†’ newLat we multiply the lng offset from centroid
 // by cos(origLat) / cos(newLat), which is the ratio of the two scale factors.
 
 function reprojectLatLng(lat, lng, origCentroidLat, origCentroidLng, newCentroidLat, newCentroidLng) {
@@ -146,13 +148,13 @@ function centroid(latlngs) {
   const lng = pts.reduce((s, p) => s + p.lng, 0) / pts.length;
   return { lat, lng };
 }
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export default function GeoScaleMapPage() {
   const mapContainerRef = useRef(null);
   const mapRef          = useRef(null);
   const geoDataRef      = useRef(null);
-  const layersRef       = useRef({});       // name → { layer, origLatLngs, origCentroid }
+  const layersRef       = useRef({});       // name â†’ { layer, origLatLngs, origCentroid }
   const colorIdxRef     = useRef(0);
   const [pinned, setPinned]           = useState([]);
   const [search, setSearch]           = useState("");
@@ -166,8 +168,8 @@ export default function GeoScaleMapPage() {
       center: [20, 0], zoom: 3, minZoom: 2, maxZoom: 10, zoomControl: false,
     });
     L.tileLayer(
-      "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
-      { attribution: '&copy; <a href="https://carto.com/">CARTO</a>', subdomains: "abcd", maxZoom: 19 }
+      "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
+      { attribution: "&copy; CARTO", subdomains: "", maxZoom: 19 }
     ).addTo(map);
     L.control.zoom({ position: "topright" }).addTo(map);
     mapRef.current = map;
@@ -180,6 +182,7 @@ export default function GeoScaleMapPage() {
         .catch(e => console.error("GeoJSON load failed", e));
     }).catch(e => console.error("topojson load failed", e));
 
+
     return () => { map.remove(); mapRef.current = null; };
   }, []);
 
@@ -190,13 +193,11 @@ export default function GeoScaleMapPage() {
     setSuggestions(Object.keys(COUNTRY_DATA).filter(n => n.toLowerCase().includes(q)).slice(0, 8));
   }, [search]);
 
-  const addCountry = useCallback(async (name) => {
+  const addCountry = async (name) => {
     if (!mapRef.current || pinned.find(c => c.name === name)) return;
     setLoading(name);
     const color = COLORS[colorIdxRef.current % COLORS.length];
     colorIdxRef.current++;
-
-    // Load GeoJSON if not yet loaded
     if (!geoDataRef.current) {
       try {
         const topo = await import("topojson-client");
@@ -204,92 +205,54 @@ export default function GeoScaleMapPage() {
         geoDataRef.current = topo.feature(data, data.objects.countries);
       } catch(e) { setLoading(""); alert("Failed to load map data."); return; }
     }
-
     const isoId = ISO_MAP[name];
     const features = isoId
       ? geoDataRef.current.features.filter(f => String(f.id) === isoId)
       : geoDataRef.current.features.filter(f => (f.properties?.name || "").toLowerCase() === name.toLowerCase());
-
-    if (!features.length) { setLoading(""); alert(`Borders not found for "${name}".`); return; }
-
+    if (!features.length) { setLoading(""); alert("Borders not found for " + name); return; }
     const geojson = features.length === 1 ? features[0] : { type: "FeatureCollection", features };
     const map = mapRef.current;
-
     const layer = L.geoJSON(geojson, {
       style: { color, weight: 2, opacity: 0.9, fillColor: color, fillOpacity: 0.4 },
     }).addTo(map);
-
-    // Store original latlngs & centroid for reprojection reference
     let origLatLngs = null;
     let origCentroid = null;
     layer.eachLayer(sub => {
-      if (!origLatLngs) {
-        origLatLngs = sub.getLatLngs();
-        origCentroid = centroid(origLatLngs);
-      }
+      if (!origLatLngs) { origLatLngs = sub.getLatLngs(); origCentroid = centroid(origLatLngs); }
     });
-
-    // ── Drag with Mercator reprojection ──────────────────────────────────────
-    let isDragging   = false;
-    let dragStartLL  = null;   // map latlng where drag started
-    let dragBaseLat  = null;   // centroid lat at drag start (for reprojection)
-    let dragBaseLng  = null;   // centroid lng at drag start
-    // latLngs snapshot at the moment drag started (so we reproject from a clean base each move)
-    let snapLatLngs  = null;
-
+    let isDragging = false, dragStartLL = null, dragBaseLat = null, dragBaseLng = null, snapLatLngs = null;
     layer.eachLayer(sub => {
       sub.on("mousedown", e => {
-        isDragging  = true;
-        dragStartLL = e.latlng;
+        isDragging = true; dragStartLL = e.latlng;
         const c = centroid(sub.getLatLngs());
-        dragBaseLat = c.lat;
-        dragBaseLng = c.lng;
-        snapLatLngs = sub.getLatLngs();   // snapshot
-        map.dragging.disable();
-        e.originalEvent.preventDefault();
+        dragBaseLat = c.lat; dragBaseLng = c.lng;
+        snapLatLngs = sub.getLatLngs();
+        map.dragging.disable(); e.originalEvent.preventDefault();
       });
     });
-
     map.on("mousemove", e => {
       if (!isDragging || !dragStartLL) return;
-
       const dlat = e.latlng.lat - dragStartLL.lat;
       const dlng = e.latlng.lng - dragStartLL.lng;
-
       const newCLat = Math.max(-80, Math.min(80, dragBaseLat + dlat));
       const newCLng = dragBaseLng + dlng;
-
-      // Reproject every sublayer from the snapshot
       layer.eachLayer(sub => {
-        const reprojected = reprojectRing(
-          snapLatLngs || sub.getLatLngs(),
-          dragBaseLat, dragBaseLng,
-          newCLat, newCLng
-        );
-        sub.setLatLngs(reprojected);
+        sub.setLatLngs(reprojectRing(snapLatLngs || sub.getLatLngs(), dragBaseLat, dragBaseLng, newCLat, newCLng));
       });
     });
-
     map.on("mouseup", () => {
       if (!isDragging) return;
-      isDragging  = false;
-      dragStartLL = null;
-      snapLatLngs = null;
+      isDragging = false; dragStartLL = null; snapLatLngs = null;
       map.dragging.enable();
     });
-    // ─────────────────────────────────────────────────────────────────────────
-
     layer.bindTooltip(name, { permanent: false, direction: "center", className: "gs-tip" });
-
     layersRef.current[name] = { layer, origLatLngs, origCentroid };
-
     const bounds = layer.getBounds();
     if (bounds.isValid()) map.flyToBounds(bounds, { padding: [60, 60], duration: 0.7 });
-
     const info = COUNTRY_DATA[name] || { area: 0, pop: "?" };
     setPinned(prev => [...prev, { name, color, area: info.area, pop: info.pop }]);
     setSearch(""); setSuggestions([]); setLoading("");
-  }, [pinned]);
+  };
 
   function removeCountry(name) {
     const entry = layersRef.current[name];
@@ -304,21 +267,14 @@ export default function GeoScaleMapPage() {
   }
 
   function fmtArea(km2) {
-    return km2 >= 1e6 ? `${(km2 / 1e6).toFixed(2)}M km²` : `${km2.toLocaleString()} km²`;
+    return km2 >= 1e6 ? (km2 / 1e6).toFixed(2) + "M km2" : km2.toLocaleString() + " km2";
   }
 
-  return (
-    <div style={{ position: "relative", width: "100%", height: "100vh", fontFamily: "DM Sans, sans-serif" }}>
-      <style>{`
-        .gs-tip { background: #1a1a2e; color: #fff; border: none; border-radius: 6px; font-family: DM Sans, sans-serif; font-size: 13px; font-weight: 600; padding: 4px 10px; }
-        .gs-tip::before { display: none; }
-        .leaflet-container { background: #aad3df; }
-        .gs-suggest:hover { background: rgba(255,255,255,0.07) !important; }
-      `}</style>
 
+  return (
+    <div id="map-wrapper" style={{ position: "relative", width: "100%", height: "100vh", fontFamily: "DM Sans, sans-serif" }}>
       <div ref={mapContainerRef} style={{ width: "100%", height: "100%" }} />
 
-      {/* Sidebar */}
       <div style={{
         position: "absolute", top: 16, left: 16, zIndex: 1000,
         background: "rgba(15,15,30,0.92)", backdropFilter: "blur(12px)",
@@ -329,7 +285,6 @@ export default function GeoScaleMapPage() {
           The True Size Of...
         </div>
 
-        {/* Search */}
         <div style={{ position: "relative", marginBottom: 14 }}>
           <input
             value={search}
@@ -350,12 +305,8 @@ export default function GeoScaleMapPage() {
               border: "1px solid rgba(255,255,255,0.1)", zIndex: 10
             }}>
               {suggestions.map(s => (
-                <div
-                  key={s}
-                  className="gs-suggest"
-                  onClick={() => addCountry(s)}
-                  style={{ padding: "9px 14px", cursor: "pointer", fontSize: 13, color: "#e5e7eb", borderBottom: "1px solid rgba(255,255,255,0.05)", background: "transparent" }}
-                >
+                <div key={s} className="gs-suggest" onClick={() => addCountry(s)}
+                  style={{ padding: "9px 14px", cursor: "pointer", fontSize: 13, color: "#e5e7eb", borderBottom: "1px solid rgba(255,255,255,0.05)", background: "transparent" }}>
                   {loading === s ? "Loading..." : s}
                 </div>
               ))}
@@ -363,7 +314,6 @@ export default function GeoScaleMapPage() {
           )}
         </div>
 
-        {/* Pinned countries */}
         {pinned.map(c => (
           <div key={c.name} style={{
             display: "flex", alignItems: "center", gap: 10, marginBottom: 10,
@@ -373,14 +323,12 @@ export default function GeoScaleMapPage() {
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontWeight: 600, fontSize: 14, color: "#f9fafb", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.name}</div>
               <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 2, display: "flex", gap: 10 }}>
-                <span>📐 {fmtArea(c.area)}</span>
-                <span>👥 {c.pop}</span>
+                <span>{fmtArea(c.area)}</span>
+                <span>{c.pop}</span>
               </div>
             </div>
-            <button
-              onClick={() => removeCountry(c.name)}
-              style={{ background: "none", border: "none", color: "#6b7280", cursor: "pointer", fontSize: 16, padding: "2px 4px" }}
-            >✕</button>
+            <button onClick={() => removeCountry(c.name)}
+              style={{ background: "none", border: "none", color: "#6b7280", cursor: "pointer", fontSize: 16, padding: "2px 4px" }}>x</button>
           </div>
         ))}
 
@@ -389,9 +337,7 @@ export default function GeoScaleMapPage() {
             width: "100%", marginTop: 6, padding: "8px",
             background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.3)",
             borderRadius: 8, color: "#fca5a5", fontSize: 12, cursor: "pointer"
-          }}>
-            Clear all
-          </button>
+          }}>Clear all</button>
         )}
 
         {pinned.length === 0 && (
@@ -401,9 +347,25 @@ export default function GeoScaleMapPage() {
         )}
 
         <div style={{ marginTop: 14, paddingTop: 10, borderTop: "1px solid rgba(255,255,255,0.08)", fontSize: 11, color: "#4b5563" }}>
-          GeoScale © 2026
+          GeoScale 2026
         </div>
       </div>
+
+      <button
+        onClick={() => {
+          const el = document.getElementById("map-wrapper");
+          if (!document.fullscreenElement) el.requestFullscreen();
+          else document.exitFullscreen();
+        }}
+        style={{
+          position: "absolute", bottom: 40, right: 15, zIndex: 1000,
+          background: "white", border: "2px solid rgba(0,0,0,0.3)",
+          borderRadius: 4, width: 34, height: 34, cursor: "pointer",
+          fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center",
+          boxShadow: "0 2px 6px rgba(0,0,0,0.3)"
+        }}
+        title="Toggle Fullscreen"
+      >&#x26F6;</button>
     </div>
   );
 }
