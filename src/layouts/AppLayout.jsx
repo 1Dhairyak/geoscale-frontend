@@ -12,13 +12,6 @@ const NAV = [
     ],
   },
   {
-    group: "Community",
-    items: [
-      { label: "Leaderboard", path: "/leaderboard", icon: LeaderIcon },
-      { label: "Friends", path: "/friends", icon: FriendsIcon },
-    ],
-  },
-  {
     group: "Account",
     items: [
       { label: "Profile", path: "/profile", icon: ProfileIcon },
@@ -54,23 +47,6 @@ function MultiIcon() {
     </svg>
   );
 }
-function LeaderIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="18" y1="20" x2="18" y2="10" />
-      <line x1="12" y1="20" x2="12" y2="4" />
-      <line x1="6" y1="20" x2="6" y2="14" />
-    </svg>
-  );
-}
-function FriendsIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-      <circle cx="12" cy="7" r="4" />
-    </svg>
-  );
-}
 function ProfileIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -100,23 +76,16 @@ export default function AppLayout() {
 
   return (
     <div style={{ display: "flex", height: "100vh", background: "#f9fafb" }}>
-      {/* Sidebar */}
       <aside style={{
-        width: 200,
-        minWidth: 200,
-        background: "#ffffff",
-        borderRight: "1px solid #e8eaed",
-        display: "flex",
-        flexDirection: "column",
-        padding: "0",
-        zIndex: 10,
+        width: 200, minWidth: 200, background: "#ffffff",
+        borderRight: "1px solid #e8eaed", display: "flex",
+        flexDirection: "column", padding: "0", zIndex: 10,
       }}>
-        {/* Logo */}
         <div style={{ padding: "20px 16px 16px", borderBottom: "1px solid #e8eaed" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <div style={{
-              width: 30, height: 30, borderRadius: 8,
-              background: "#7c3aed", display: "flex", alignItems: "center", justifyContent: "center",
+              width: 30, height: 30, borderRadius: 8, background: "#7c3aed",
+              display: "flex", alignItems: "center", justifyContent: "center",
             }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
                 <circle cx="12" cy="12" r="10" />
@@ -130,7 +99,6 @@ export default function AppLayout() {
           </div>
         </div>
 
-        {/* Nav groups */}
         <nav style={{ flex: 1, padding: "12px 10px", display: "flex", flexDirection: "column", gap: 20, overflowY: "auto" }}>
           {NAV.map((group) => (
             <div key={group.group}>
@@ -151,8 +119,7 @@ export default function AppLayout() {
                     fontSize: 13, fontWeight: isActive ? 600 : 500,
                     color: isActive ? "#7c3aed" : "#6b7280",
                     background: isActive ? "#ede9fe" : "transparent",
-                    textDecoration: "none",
-                    transition: "all 0.15s",
+                    textDecoration: "none", transition: "all 0.15s",
                   })}
                 >
                   <item.icon />
@@ -163,15 +130,11 @@ export default function AppLayout() {
           ))}
         </nav>
 
-        {/* Bottom: user + logout */}
         <div style={{ padding: "12px 10px", borderTop: "1px solid #e8eaed" }}>
-          <div style={{
-            display: "flex", alignItems: "center", gap: 8,
-            padding: "8px 10px", marginBottom: 4,
-          }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", marginBottom: 4 }}>
             <div style={{
-              width: 28, height: 28, borderRadius: "50%",
-              background: "#ede9fe", display: "flex", alignItems: "center", justifyContent: "center",
+              width: 28, height: 28, borderRadius: "50%", background: "#ede9fe",
+              display: "flex", alignItems: "center", justifyContent: "center",
               fontSize: 12, fontWeight: 700, color: "#7c3aed",
             }}>
               {(username || "U")[0].toUpperCase()}
@@ -186,8 +149,7 @@ export default function AppLayout() {
               display: "flex", alignItems: "center", gap: 8,
               width: "100%", padding: "7px 10px", borderRadius: 8,
               background: "transparent", border: "none", cursor: "pointer",
-              fontSize: 13, fontWeight: 500, color: "#6b7280",
-              transition: "all 0.15s",
+              fontSize: 13, fontWeight: 500, color: "#6b7280", transition: "all 0.15s",
             }}
             onMouseEnter={e => { e.currentTarget.style.background = "#fef2f2"; e.currentTarget.style.color = "#dc2626"; }}
             onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#6b7280"; }}
@@ -198,7 +160,6 @@ export default function AppLayout() {
         </div>
       </aside>
 
-      {/* Main content */}
       <main style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column", position: "relative" }}>
         <Outlet />
       </main>

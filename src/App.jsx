@@ -8,9 +8,7 @@ import RegisterPage    from './pages/RegisterPage'
 import DashboardPage   from './pages/DashboardPage'
 import QuizPage        from './pages/QuizPage'
 import MatchPage       from './pages/MatchPage'
-import LeaderboardPage from './pages/LeaderboardPage'
-import GeoScaleMapPage from './pages/GeoScaleMapPage';
-import FriendsPage from './pages/FriendsPage';
+import GeoScaleMapPage from './pages/GeoScaleMapPage'
 import ProfilePage     from './pages/ProfilePage'
 
 function ProtectedLayout() {
@@ -32,14 +30,12 @@ export default function App() {
           <Route path="/register" element={<RegisterPage />} />
 
           <Route element={<ProtectedLayout />}>
-            <Route path="/"           element={<Navigate to="/dashboard" replace />} />
-            <Route path="/dashboard"   element={<DashboardPage />} />
-            <Route path="/quiz"        element={<QuizPage />} />
-            <Route path="/match"       element={<MatchPage />} />
-            <Route path="/leaderboard" element={<LeaderboardPage />} />
-            <Route path="/map" element={<GeoScaleMapPage />} />
-            <Route path="/friends"     element={<FriendsPage />} />
-            <Route path="/profile"     element={<ProfilePage />} />
+            <Route path="/"          element={<Navigate to="/dashboard" replace />} />
+            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/quiz"      element={<QuizPage />} />
+            <Route path="/match"     element={<MatchPage />} />
+            <Route path="/map"       element={<GeoScaleMapPage />} />
+            <Route path="/profile"   element={<ProfilePage />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
