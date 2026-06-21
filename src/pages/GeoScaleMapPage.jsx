@@ -1,8 +1,18 @@
-﻿import { useState, useEffect, useRef, useCallback } from "react";
-import L from "leaflet";
+// ─────────────────────────────────────────────────────────────
+// GeoScaleMapPage.jsx — True Size interactive map
+//
+// Lets users search for a country, pins it onto a Leaflet map
+// at its correct Mercator scale, and allows dragging to any
+// latitude (with real-time horizontal re-projection so the shape
+// stays accurate as it crosses latitudes).
+//
+// Tile layer: CartoDB Positron — English labels only.
+// ─────────────────────────────────────────────────────────────
+import { useState, useEffect, useRef } from 'react'
+import L from 'leaflet'
 
-import "leaflet/dist/leaflet.css";
-import "./GeoScaleMap.css";
+import 'leaflet/dist/leaflet.css'
+import './GeoScaleMap.css'
 
 const COLORS = ["#ef4444","#22c55e","#3b82f6","#f59e0b","#8b5cf6","#f97316","#06b6d4","#ec4899"];
 
@@ -98,25 +108,60 @@ const ISO_MAP = {
   "Belarus":"112","Oman":"512","Czech Rep.":"203",
 };
 
-// â”€â”€â”€ Mercator reprojection helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Given the original (centroid) latitude and the new (target) latitude,
-// reproject a single [lat, lng] coordinate so that the horizontal scale
-// matches the Mercator distortion at the target latitude.
-//
-// Mercator horizontal scale factor = 1 / cos(lat).
-// To move from origLat â†’ newLat we multiply the lng offset from centroid
-// by cos(origLat) / cos(newLat), which is the ratio of the two scale factors.
+const ALPHA2_MAP = {
+  "Afghanistan":"af","Algeria":"dz","Angola":"ao","Argentina":"ar","Australia":"au","Austria":"at","Bangladesh":"bd","Belarus":"by","Bolivia":"bo","Botswana":"bw","Brazil":"br","Bulgaria":"bg","Cambodia":"kh","Cameroon":"cm","Canada":"ca","Central African Rep.":"cf","Chad":"td","Chile":"cl","China":"cn","Colombia":"co","Croatia":"hr","Cuba":"cu","Czech Rep.":"cz","Dem. Rep. Congo":"cd","Denmark":"dk","Dominican Rep.":"do","Ecuador":"ec","Egypt":"eg","Ethiopia":"et","Finland":"fi","France":"fr","Gabon":"ga","Germany":"de","Ghana":"gh","Greece":"gr","Greenland":"gl","Guatemala":"gt","Honduras":"hn","Hungary":"hu","Iceland":"is","India":"in","Indonesia":"id","Iran":"ir","Iraq":"iq","Ireland":"ie","Italy":"it","Japan":"jp","Jordan":"jo","Kazakhstan":"kz","Kenya":"ke","North Korea":"kp","South Korea":"kr","Kyrgyzstan":"kg","Laos":"la","Latvia":"lv","Libya":"ly","Lithuania":"lt","Madagascar":"mg","Malaysia":"my","Mali":"ml","Mauritania":"mr","Mexico":"mx","Mongolia":"mn","Morocco":"ma","Mozambique":"mz","Myanmar":"mm","Namibia":"na","Nepal":"np","Netherlands":"nl","New Zealand":"nz","Niger":"ne","Nigeria":"ng","Norway":"no","Pakistan":"pk","Panama":"pa","Papua New Guinea":"pg","Paraguay":"py","Peru":"pe","Philippines":"ph","Poland":"pl","Portugal":"pt","Romania":"ro","Russia":"ru","Saudi Arabia":"sa","Senegal":"sn","Serbia":"rs","Somalia":"so","South Africa":"za","Spain":"es","Sri Lanka":"lk","Sudan":"sd","Sweden":"se","Switzerland":"ch","Syria":"sy","Tajikistan":"tj","Tanzania":"tz","Thailand":"th","Tunisia":"tn","Turkey":"tr","Turkmenistan":"tm","Uganda":"ug","Ukraine":"ua","United Arab Emirates":"ae","United Kingdom":"gb","United States of America":"us","Uruguay":"uy","Uzbekistan":"uz","Venezuela":"ve","Vietnam":"vn","Yemen":"ye","Zambia":"zm","Zimbabwe":"zw","Oman":"om"
+};
 
+// ——— Antimeridian fix ————————————————————————————————————
+function fixAntimeridian(geojson) {
+  const fixed = JSON.parse(JSON.stringify(geojson));
+  function fixCoords(coords) {
+    const lngs = [];
+    function collectLngs(c) {
+      if (typeof c[0] === "number" && typeof c[1] === "number" && (c.length === 2 || c.length === 3)) {
+        lngs.push(c[0]);
+      } else if (Array.isArray(c)) {
+        c.forEach(collectLngs);
+      }
+    }
+    collectLngs(coords);
+    const hasLargePos = lngs.some(l => l > 100);
+    const hasLargeNeg = lngs.some(l => l < -100);
+    if (hasLargePos && hasLargeNeg) {
+      function shiftNeg(c) {
+        if (typeof c[0] === "number" && typeof c[1] === "number" && (c.length === 2 || c.length === 3)) {
+          if (c[0] < 0) c[0] += 360;
+        } else if (Array.isArray(c)) {
+          c.forEach(shiftNeg);
+        }
+      }
+      shiftNeg(coords);
+    }
+  }
+  function fixGeometry(geom) {
+    if (!geom || !geom.coordinates) return;
+    if (geom.type === "Polygon" || geom.type === "MultiPolygon") {
+      fixCoords(geom.coordinates);
+    }
+  }
+  if (fixed.type === "Feature") {
+    fixGeometry(fixed.geometry);
+  } else if (fixed.type === "FeatureCollection") {
+    fixed.features.forEach(f => fixGeometry(f.geometry));
+  } else {
+    fixGeometry(fixed);
+  }
+  return fixed;
+}
+
+// ——— Mercator reprojection helpers ———————————————————————
 function reprojectLatLng(lat, lng, origCentroidLat, origCentroidLng, newCentroidLat, newCentroidLng) {
   const toRad = d => d * Math.PI / 180;
   const cosOrig = Math.cos(toRad(origCentroidLat));
   const cosNew  = Math.cos(toRad(newCentroidLat));
-  // Clamp to avoid division by zero near poles
   const safeNew = cosNew < 0.01 ? 0.01 : cosNew;
-
   const dlng = lng - origCentroidLng;
   const dlat = lat - origCentroidLat;
-
   const newLng = newCentroidLng + dlng * (cosOrig / safeNew);
   const newLat = Math.max(-85, Math.min(85, newCentroidLat + dlat));
   return L.latLng(newLat, newLng);
@@ -130,7 +175,6 @@ function reprojectRing(ring, origCLat, origCLng, newCLat, newCLng) {
   return ring.map(r => reprojectRing(r, origCLat, origCLng, newCLat, newCLng));
 }
 
-// Compute centroid of a flat LatLng array (works on nested rings too)
 function flattenLatLngs(latlngs, out = []) {
   if (!Array.isArray(latlngs)) return out;
   if (latlngs[0] && typeof latlngs[0].lat === "number") {
@@ -144,8 +188,19 @@ function flattenLatLngs(latlngs, out = []) {
 function centroid(latlngs) {
   const pts = flattenLatLngs(latlngs);
   if (!pts.length) return { lat: 0, lng: 0 };
-  const lat = pts.reduce((s, p) => s + p.lat, 0) / pts.length;
-  const lng = pts.reduce((s, p) => s + p.lng, 0) / pts.length;
+  const refLng = pts[0].lng;
+  let sumLat = 0, sumLng = 0;
+  pts.forEach(p => {
+    sumLat += p.lat;
+    let dlng = p.lng - refLng;
+    if (dlng > 180) dlng -= 360;
+    if (dlng < -180) dlng += 360;
+    sumLng += (refLng + dlng);
+  });
+  const lat = sumLat / pts.length;
+  let lng = sumLng / pts.length;
+  if (lng > 180) lng -= 360;
+  if (lng < -180) lng += 360;
   return { lat, lng };
 }
 // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -167,9 +222,15 @@ export default function GeoScaleMapPage() {
     const map = L.map(mapContainerRef.current, {
       center: [20, 0], zoom: 3, minZoom: 2, maxZoom: 10, zoomControl: false,
     });
+    // Base map — no labels (avoids non-English text)
     L.tileLayer(
-      "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
-      { attribution: "&copy; CARTO", subdomains: "", maxZoom: 19 }
+      "https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png",
+      { attribution: "&copy; <a href='https://carto.com/'>CARTO</a>", subdomains: "abcd", maxZoom: 19 }
+    ).addTo(map);
+    // English-only labels overlay (separate tile layer renders only Latin text)
+    L.tileLayer(
+      "https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png",
+      { subdomains: "abcd", maxZoom: 19, pane: "overlayPane" }
     ).addTo(map);
     L.control.zoom({ position: "topright" }).addTo(map);
     mapRef.current = map;
@@ -210,7 +271,8 @@ export default function GeoScaleMapPage() {
       ? geoDataRef.current.features.filter(f => String(f.id) === isoId)
       : geoDataRef.current.features.filter(f => (f.properties?.name || "").toLowerCase() === name.toLowerCase());
     if (!features.length) { setLoading(""); alert("Borders not found for " + name); return; }
-    const geojson = features.length === 1 ? features[0] : { type: "FeatureCollection", features };
+    const geojsonRaw = features.length === 1 ? features[0] : { type: "FeatureCollection", features };
+    const geojson = fixAntimeridian(geojsonRaw);
     const map = mapRef.current;
     const layer = L.geoJSON(geojson, {
       style: { color, weight: 2, opacity: 0.9, fillColor: color, fillOpacity: 0.4 },
@@ -306,7 +368,8 @@ export default function GeoScaleMapPage() {
             }}>
               {suggestions.map(s => (
                 <div key={s} className="gs-suggest" onClick={() => addCountry(s)}
-                  style={{ padding: "9px 14px", cursor: "pointer", fontSize: 13, color: "#e5e7eb", borderBottom: "1px solid rgba(255,255,255,0.05)", background: "transparent" }}>
+                  style={{ padding: "9px 14px", cursor: "pointer", fontSize: 13, color: "#e5e7eb", borderBottom: "1px solid rgba(255,255,255,0.05)", background: "transparent", display: "flex", alignItems: "center", gap: 10 }}>
+                  <img src={`https://flagcdn.com/w20/${ALPHA2_MAP[s]}.png`} alt="" style={{width: 20, borderRadius: 2}} onError={(e) => e.target.style.display='none'} />
                   {loading === s ? "Loading..." : s}
                 </div>
               ))}
@@ -320,6 +383,7 @@ export default function GeoScaleMapPage() {
             background: "rgba(255,255,255,0.06)", borderRadius: 10, padding: "10px 12px"
           }}>
             <div style={{ width: 12, height: 12, borderRadius: "50%", background: c.color, flexShrink: 0 }} />
+            <img src={`https://flagcdn.com/w20/${ALPHA2_MAP[c.name]}.png`} alt="" style={{width: 20, borderRadius: 2}} onError={(e) => e.target.style.display='none'} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontWeight: 600, fontSize: 14, color: "#f9fafb", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.name}</div>
               <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 2, display: "flex", gap: 10 }}>

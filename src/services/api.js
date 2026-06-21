@@ -1,3 +1,9 @@
+// ─────────────────────────────────────────────────────────────
+// api.js
+// Shared axios instance.
+// - Attaches the stored JWT to every request automatically.
+// - On 401 / 403 responses, clears the token and redirects to /login.
+// ─────────────────────────────────────────────────────────────
 import axios from 'axios'
 
 const api = axios.create({
@@ -6,14 +12,14 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 })
 
-// Attach JWT to every request
+// Attach JWT to every outgoing request
 api.interceptors.request.use(config => {
   const token = localStorage.getItem('geo_token')
   if (token) config.headers.Authorization = `Bearer ${token}`
   return config
 })
 
-// Handle 401 globally â€” clear token and redirect
+// On auth errors, clear local state and redirect to login
 api.interceptors.response.use(
   res => res,
   err => {

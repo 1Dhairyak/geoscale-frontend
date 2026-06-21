@@ -1,8 +1,12 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
-
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8080/api/v1";
+// ─────────────────────────────────────────────────────────────
+// LoginPage.jsx
+// Handles both Sign In and Create Account in a single page via
+// a tab switcher. Redirects to /map on successful login.
+// ─────────────────────────────────────────────────────────────
+import { useState } from 'react'
+import { useNavigate, useSearchParams, Link } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
+import api from '../services/api'
 
 function StrengthMeter({ password }) {
   function score(p) {
@@ -37,7 +41,8 @@ function StrengthMeter({ password }) {
 export default function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
-  const [tab, setTab] = useState("login");
+  const [searchParams] = useSearchParams();
+  const [tab, setTab] = useState(searchParams.get("tab") === "register" ? "register" : "login");
 
   // Login state
   const [loginUser, setLoginUser] = useState("");
@@ -61,7 +66,7 @@ export default function LoginPage() {
     setLoginLoading(true);
     try {
       await login(loginUser, loginPass);
-      navigate("/dashboard");
+      navigate("/map");
     } catch (err) {
       setLoginError("Invalid username or password.");
     } finally {
@@ -70,23 +75,18 @@ export default function LoginPage() {
   }
 
   async function handleRegister(e) {
-    e.preventDefault();
-    setRegError("");
-    if (regPass !== regConfirm) { setRegError("Passwords do not match."); return; }
-    setRegLoading(true);
+    e.preventDefault()
+    setRegError('')
+    if (regPass !== regConfirm) { setRegError('Passwords do not match.'); return; }
+    setRegLoading(true)
     try {
-      const res = await fetch(`${API_BASE}/auth/register`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: regUser, email: regEmail, password: regPass }),
-      });
-      if (!res.ok) throw new Error(await res.text());
-      setRegSuccess(true);
-      setTimeout(() => { setTab("login"); setRegSuccess(false); }, 1800);
+      await api.post('/auth/register', { username: regUser, email: regEmail, password: regPass })
+      setRegSuccess(true)
+      setTimeout(() => { setTab('login'); setRegSuccess(false) }, 1800)
     } catch (err) {
-      setRegError(err.message || "Registration failed.");
+      setRegError(err.response?.data?.message || 'Registration failed.')
     } finally {
-      setRegLoading(false);
+      setRegLoading(false)
     }
   }
 
@@ -120,7 +120,7 @@ export default function LoginPage() {
 
         {/* Logo */}
         <div style={{ position: "relative", zIndex: 1 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 48 }}>
+          <Link to="/" style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 48, textDecoration: "none" }}>
             <div style={{
               width: 36, height: 36, borderRadius: 10,
               background: "#7c3aed", display: "flex", alignItems: "center", justifyContent: "center",
@@ -134,7 +134,7 @@ export default function LoginPage() {
             <span style={{ fontFamily: "Sora, sans-serif", fontWeight: 700, fontSize: 20, color: "#ffffff" }}>
               GeoScale
             </span>
-          </div>
+          </Link>
 
           <h1 style={{ fontFamily: "Sora, sans-serif", fontWeight: 800, fontSize: 36, color: "#ffffff", lineHeight: 1.2, marginBottom: 16 }}>
             Geography.<br />Ranked.<br />Real-time.

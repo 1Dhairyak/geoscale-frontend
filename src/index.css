@@ -5,14 +5,14 @@
 
 :root {
   --geo-purple: #7c3aed;
-  --geo-purple-light: #ede9fe;
+  --geo-purple-light: rgba(124, 58, 237, 0.15);
   --geo-purple-hover: #6d28d9;
   --geo-purple-dim: #a78bfa;
-  --geo-border: #e8eaed;
-  --geo-surface: #f9fafb;
-  --geo-text: #1a1a2e;
-  --geo-muted: #6b7280;
-  --geo-subtle: #9ca3af;
+  --geo-border: rgba(255, 255, 255, 0.09);
+  --geo-surface: rgba(255, 255, 255, 0.04);
+  --geo-text: #f3f4f6;
+  --geo-muted: #9ca3af;
+  --geo-subtle: #6b7280;
 }
 
 * {
@@ -21,7 +21,7 @@
 
 body {
   font-family: "DM Sans", sans-serif;
-  background: #ffffff;
+  background: #11132a;
   color: var(--geo-text);
   margin: 0;
   -webkit-font-smoothing: antialiased;
@@ -29,56 +29,47 @@ body {
 
 @layer components {
   .card {
-    @apply bg-white border border-geo-border rounded-xl shadow-sm;
+    @apply bg-geo-surface border border-geo-border rounded-xl shadow-sm;
+    backdrop-filter: blur(10px);
   }
 
   .card-surface {
-    @apply bg-geo-surface border border-geo-border rounded-xl;
+    @apply bg-[rgba(255,255,255,0.02)] border border-geo-border rounded-xl;
   }
 
   .btn-primary {
-    @apply bg-geo-purple text-white font-medium rounded-lg px-4 py-2 text-sm
-           hover:bg-geo-purple-hover active:scale-95 transition-all duration-150
+    @apply bg-gradient-to-br from-purple-600 to-purple-800 text-white font-medium rounded-full px-5 py-2.5 text-sm
+           hover:scale-105 active:scale-95 transition-all duration-200 shadow-lg shadow-purple-500/30
            disabled:opacity-50 disabled:cursor-not-allowed;
   }
 
   .btn-ghost {
-    @apply border border-geo-border text-geo-text font-medium rounded-lg px-4 py-2 text-sm
-           hover:bg-geo-surface active:scale-95 transition-all duration-150;
+    @apply border border-geo-border text-geo-text font-medium rounded-full px-5 py-2.5 text-sm
+           hover:bg-[rgba(255,255,255,0.08)] active:scale-95 transition-all duration-150;
   }
 
   .btn-danger {
-    @apply border border-red-200 text-red-600 font-medium rounded-lg px-4 py-2 text-sm
-           hover:bg-red-50 active:scale-95 transition-all duration-150;
+    @apply border border-red-500/30 text-red-400 font-medium rounded-full px-5 py-2.5 text-sm
+           hover:bg-red-500/10 active:scale-95 transition-all duration-150;
   }
 
   .input {
-    @apply w-full bg-white border border-geo-border rounded-lg px-3 py-2 text-sm text-geo-text
-           placeholder:text-geo-subtle
+    @apply w-full bg-[rgba(255,255,255,0.02)] border border-geo-border rounded-xl px-4 py-2.5 text-sm text-geo-text
+           placeholder:text-geo-subtle focus:bg-[rgba(255,255,255,0.06)]
            focus:outline-none focus:ring-2 focus:ring-geo-purple focus:border-transparent
            transition-all duration-150;
   }
 
   .tag-accent {
-    @apply bg-geo-purple-light text-geo-purple text-xs font-medium px-2.5 py-0.5 rounded-full;
+    @apply bg-geo-purple-light text-geo-purple-dim text-xs font-medium px-3 py-1 rounded-full border border-purple-500/30;
   }
 
   .tag-muted {
-    @apply bg-geo-surface text-geo-muted text-xs font-medium px-2.5 py-0.5 rounded-full border border-geo-border;
-  }
-
-  .sidebar-link {
-    @apply flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-geo-muted font-medium
-           hover:bg-geo-surface hover:text-geo-text transition-all duration-150 cursor-pointer;
-  }
-
-  .sidebar-link-active {
-    @apply flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-semibold
-           bg-geo-purple-light text-geo-purple transition-all duration-150 cursor-pointer;
+    @apply bg-[rgba(255,255,255,0.04)] text-geo-muted text-xs font-medium px-3 py-1 rounded-full border border-geo-border;
   }
 
   .stat-card {
-    @apply card p-5 flex flex-col gap-1;
+    @apply card p-6 flex flex-col gap-1;
   }
 
   .section-label {

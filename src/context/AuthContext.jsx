@@ -1,57 +1,71 @@
-import { createContext, useContext, useState, useEffect, useCallback } from "react";
-import api from "../services/api";
+// ─────────────────────────────────────────────────────────────
+// AuthContext.jsx
+// Provides authentication state and actions to the entire app.
+// Persists the JWT and username in localStorage so the session
+// survives page refreshes.
+//
+// Exposes: { user, username, loading, login, register, logout }
+// ─────────────────────────────────────────────────────────────
+import { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import api from '../services/api'
 
-const AuthContext = createContext(null);
+const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
-  const [user, setUser]       = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser]       = useState(null)
+  const [loading, setLoading] = useState(true)
 
+  // Restore session from localStorage on first mount
   useEffect(() => {
-    const token    = localStorage.getItem("geo_token");
-    const username = localStorage.getItem("geo_username");
-    if (token && username) setUser({ token, username });
-    setLoading(false);
-  }, []);
+    const token    = localStorage.getItem('geo_token')
+    const username = localStorage.getItem('geo_username')
+    if (token && username) setUser({ token, username })
+    setLoading(false)
+  }, [])
 
   const login = useCallback(async (username, password) => {
-    const { data } = await api.post("/auth/login", { username, password });
-    localStorage.setItem("geo_token",         data.token);
-    localStorage.setItem("geo_refresh_token", data.refreshToken);
-    localStorage.setItem("geo_username",      username);
-    setUser({ token: data.token, username });
-    return data;
-  }, []);
+    const { data } = await api.post('/auth/login', { username, password })
+    localStorage.setItem('geo_token',         data.token)
+    localStorage.setItem('geo_refresh_token', data.refreshToken)
+    localStorage.setItem('geo_username',      username)
+    setUser({ token: data.token, username })
+    return data
+  }, [])
 
   const register = useCallback(async (username, email, password) => {
-    const { data } = await api.post("/auth/register", { username, email, password });
+    const { data } = await api.post('/auth/register', { username, email, password })
     if (data.token) {
-      localStorage.setItem("geo_token",         data.token);
-      localStorage.setItem("geo_refresh_token", data.refreshToken);
-      localStorage.setItem("geo_username",      username);
-      setUser({ token: data.token, username });
+      localStorage.setItem('geo_token',         data.token)
+      localStorage.setItem('geo_refresh_token', data.refreshToken)
+      localStorage.setItem('geo_username',      username)
+      setUser({ token: data.token, username })
     }
-    return data;
-  }, []);
+    return data
+  }, [])
 
   const logout = useCallback(async () => {
-    const refreshToken = localStorage.getItem("geo_refresh_token");
+    const refreshToken = localStorage.getItem('geo_refresh_token')
     if (refreshToken) {
-      try {
-        await api.post("/auth/logout", { refreshToken });
-      } catch (_) {}
+      try { await api.post('/auth/logout', { refreshToken }) } catch (_) {}
     }
-    localStorage.removeItem("geo_token");
-    localStorage.removeItem("geo_refresh_token");
-    localStorage.removeItem("geo_username");
-    setUser(null);
-  }, []);
+    localStorage.removeItem('geo_token')
+    localStorage.removeItem('geo_refresh_token')
+    localStorage.removeItem('geo_username')
+    setUser(null)
+  }, [])
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{
+      user,
+      username: user?.username ?? '',
+      loading,
+      login,
+      register,
+      logout,
+    }}>
       {children}
     </AuthContext.Provider>
-  );
+  )
 }
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => useContext(AuthContext)

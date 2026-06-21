@@ -1,25 +1,28 @@
+// ─────────────────────────────────────────────────────────────
+// useMatchSocket.js
+// Custom hook that manages a STOMP / SockJS WebSocket connection
+// for a live multiplayer match.
+//
+// Usage:
+//   const { disconnect } = useMatchSocket(matchId, { onScore, onState })
+//
+// Connects when matchId becomes non-null, disconnects on unmount.
+// ─────────────────────────────────────────────────────────────
 import { useEffect, useRef, useCallback } from 'react'
 import { Client } from '@stomp/stompjs'
 import SockJS from 'sockjs-client'
 
-/**
- * useMatchSocket — subscribes to live match topics for a given matchId.
- *
- * @param {number|null} matchId
- * @param {{ onScore, onState }} handlers
- */
 export function useMatchSocket(matchId, { onScore, onState } = {}) {
   const clientRef = useRef(null)
 
   useEffect(() => {
     if (!matchId) return
 
-    const token = localStorage.getItem('geo_token')
-
+    const token  = localStorage.getItem('geo_token')
     const client = new Client({
       webSocketFactory: () => new SockJS('/ws'),
-      connectHeaders: { Authorization: `Bearer ${token}` },
-      reconnectDelay: 3000,
+      connectHeaders:   { Authorization: `Bearer ${token}` },
+      reconnectDelay:   3000,
 
       onConnect: () => {
         client.subscribe(`/topic/match/${matchId}/score`, msg => {
@@ -30,15 +33,13 @@ export function useMatchSocket(matchId, { onScore, onState } = {}) {
         })
       },
 
-      onStompError: frame => {
-        console.error('[WS] STOMP error', frame)
-      },
+      onStompError: frame => console.error('[WS] STOMP error', frame),
     })
 
     client.activate()
     clientRef.current = client
 
-    return () => { client.deactivate() }
+    return () => client.deactivate()
   }, [matchId])
 
   const disconnect = useCallback(() => {
